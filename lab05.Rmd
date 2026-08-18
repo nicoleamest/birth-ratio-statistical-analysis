@@ -1,0 +1,146 @@
+---
+title: "Lab 7: Birth Ratios"
+author: "Nicole Amestegui"
+date: "`r Sys.Date()`"
+documentclass: article
+geometry: margin=1in
+fontsize: 11pt
+output:
+  pdf_document:
+    highlight: tango
+    toc: false
+    df_print: kable
+    fig_caption: no
+    number_sections: no
+    dev: pdf
+  html_document:
+    highlight: tango
+    self_contained: true
+    theme: paper
+    toc: no
+    df_print: kable
+    fig_caption: no
+    number_sections: no
+    smart: yes
+    dev: svg
+  github_document:
+    html_preview: false
+    toc: true
+    toc_depth: 4
+    dev: svg
+    df_print: kable
+---
+
+```{r setup, include = FALSE}
+# DO NOT ALTER CODE IN THIS CHUNK
+# Set knitr options
+knitr::opts_chunk$set(
+  echo = TRUE, eval = TRUE, fig.width = 5,
+  fig.asp = 0.618, out.width = "80%", dpi = 120,
+  fig.align = "center", cache = FALSE
+)
+# Load packages
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(infer))
+suppressPackageStartupMessages(library(HistData))
+set.seed(42)
+```
+
+---
+
+## Visualizing and quantifying the distribution
+
+### Exercise 1
+
+```{r}
+Arbuthnot_dedup <- Arbuthnot %>%
+  filter(Year != 1704)
+
+dim(Arbuthnot_dedup)
+```
+
+
+### Exercise 2
+
+```{r}
+ggplot(data = Arbuthnot_dedup) +
+  geom_boxplot(aes(x = "", y = Ratio)) +
+  coord_flip()
+```
+```{r}
+ggplot(data = Arbuthnot_dedup,
+       aes(x = Ratio, y = after_stat(density))) +
+  geom_histogram(binwidth = 0.01)
+```
+center- the distribution is centered around 1.07
+shape - the distibution is slightly right skewed
+spread- most ratios fall between abt 1.01 and 1.15
+### Exercise 3
+
+```{r}
+ggplot(data = Arbuthnot_dedup, aes(x = Ratio)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 binwidth = 0.01,
+                 alpha = 0.5) +
+  geom_density()
+```
+```{r}
+Arbuthnot <- Arbuthnot %>%
+  mutate(Total = Males + Females)
+```
+
+
+
+### Exercise 4
+```{r}
+Arbuthnot_dedup %>%
+  summarize(
+    mean = mean(Ratio),
+    median = median(Ratio),
+    sd = sd(Ratio),
+    iqr = IQR(Ratio),
+    min = min(Ratio),
+    max = max(Ratio)
+  )
+```
+
+the mean, standard deviation, minimum, and maximum change more with outliers.
+## `infer`ing a trend
+
+### Exercise 5
+
+null hypothes - the mean male to female birth ratio is 1.
+alternative hypothesis - the mean male to female birth ratio is not 1. 
+
+
+### Exercise 6
+```{r}
+Arbuthnot_dedup_null_105 <- Arbuthnot_dedup %>%
+  specify(formula = Ratio ~ NULL) %>%
+  hypothesize(null = "point", mu = 1.05) %>%
+  generate(reps = 10000, type = "bootstrap") %>%
+  calculate(stat = "mean")
+```
+
+```{r}
+Arbuthnot_dedup_obs_stat <- Arbuthnot_dedup %>%
+  specify(Ratio ~ NULL) %>%
+  calculate(stat = "mean")
+```
+
+```{r}
+Arbuthnot_dedup_null_105 %>%
+  get_p_value(
+    obs_stat = Arbuthnot_dedup_obs_stat,
+    direction = "two_sided"
+  )
+```
+```{r}
+visualize(Arbuthnot_dedup_null_105) +
+  shade_p_value(
+    obs_stat = Arbuthnot_dedup_obs_stat,
+    direction = "two_sided"
+  )
+```
+Yes, the result is different because the null hypothesis changed from 1 to 1.05. However, the observed mean is still much larger than 1.05, so the null hypothesis is rejected
+
